@@ -1366,7 +1366,7 @@ function initSpeechRecognition() {
 
   const r = new SpeechRecognition();
   r.lang = 'de-DE';
-  r.continuous = false;
+  r.continuous = true;
   r.interimResults = true;
   r.maxAlternatives = 1;
 
@@ -1375,7 +1375,7 @@ function initSpeechRecognition() {
     finalTranscript = '';
     document.getElementById('micBtn').classList.add('recording');
     document.getElementById('voiceBar').style.display = 'flex';
-    document.getElementById('voiceStatus').textContent = 'Höre zu…';
+    document.getElementById('voiceStatus').textContent = 'Höre zu… (nochmal drücken zum Senden)';
     document.getElementById('msgInput').value = '';
   };
 
