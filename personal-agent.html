@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1916;
+    --surface2: #242320;
+    --border: #2e2c28;
+    --text: #f0ece4;
+    --text-muted: #7a7670;
+    --text-dim: #4a4844;
+    --accent: #c8a96e;
+    --accent2: #8fb8a0;
+    --accent3: #b8909a;
+    --accent4: #8eaac8;
+    --accent5: #a89ec8;
+    --user-bg: #1e2419;
+    --ai-bg: #1a1916;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+
+  .tagline {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topic-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .topic-badge:hover { border-color: var(--accent); color: var(--accent); }
+
+  .topic-badge.active-vacation { border-color: var(--accent); color: var(--accent); background: rgba(200, 169, 110, 0.08); }
+  .topic-badge.active-partner { border-color: var(--accent3); color: var(--accent3); background: rgba(184, 144, 154, 0.08); }
+  .topic-badge.active-job { border-color: var(--accent4); color: var(--accent4); background: rgba(142, 170, 200, 0.08); }
+  .topic-badge.active-general { border-color: var(--accent2); color: var(--accent2); background: rgba(143, 184, 160, 0.08); }
+  .topic-badge.active-mental { border-color: var(--accent5); color: var(--accent5); background: rgba(168, 158, 200, 0.08); }
+
+  /* Crisis banner */
+  .crisis-banner {
+    display: none;
+    background: rgba(168,158,200,0.08);
+    border-bottom: 1px solid rgba(168,158,200,0.2);
+    padding: 10px 28px;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .crisis-banner.visible { display: flex; }
+  .crisis-icon { font-size: 15px; }
+  .crisis-text { font-size: 12px; color: #c8c0e0; line-height: 1.5; flex: 1; }
+  .crisis-text strong { color: #a89ec8; }
+  .crisis-link {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(168,158,200,0.3);
+    color: var(--accent5);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .crisis-link:hover { background: rgba(168,158,200,0.12); }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 0;
+    scroll-behavior: smooth;
+  }
+
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-track { background: transparent; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .message-row {
+    display: flex;
+    padding: 6px 28px;
+    gap: 14px;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .avatar.ai {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: 'DM Serif Display', serif;
+  }
+
+  .avatar.user {
+    background: var(--user-bg);
+    border: 1px solid #2a3620;
+    color: var(--accent2);
+    font-size: 11px;
+  }
+
+  .bubble {
+    max-width: 68%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  .bubble.ai {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+    color: var(--text);
+  }
+
+  .bubble.user {
+    background: var(--user-bg);
+    border: 1px solid #2a3620;
+    border-top-right-radius: 4px;
+    color: #d4eeda;
+  }
+
+  .message-meta {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .message-row.user .message-meta { justify-content: flex-end; }
+
+  .topic-tag {
+    font-size: 9.5px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  .topic-tag.vacation { background: rgba(200,169,110,0.12); color: var(--accent); }
+  .topic-tag.partner { background: rgba(184,144,154,0.12); color: var(--accent3); }
+  .topic-tag.job { background: rgba(142,170,200,0.12); color: var(--accent4); }
+  .topic-tag.general { background: rgba(143,184,160,0.12); color: var(--accent2); }
+  .topic-tag.mental { background: rgba(168,158,200,0.12); color: var(--accent5); }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px;
+  }
+  .typing-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    padding: 40px;
+    text-align: center;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .empty-icon {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    color: var(--accent);
+    opacity: 0.6;
+    margin-bottom: 8px;
+  }
+
+  .empty-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    color: var(--text);
+    opacity: 0.8;
+  }
+
+  .empty-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 320px;
+    line-height: 1.6;
+  }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .suggestion-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .suggestion-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200,169,110,0.06);
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 16px 28px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .topic-pills {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.2px;
+  }
+
+  .pill:hover { opacity: 0.85; }
+  .pill.selected-vacation { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
+  .pill.selected-partner { border-color: var(--accent3); color: var(--accent3); background: rgba(184,144,154,0.1); }
+  .pill.selected-job { border-color: var(--accent4); color: var(--accent4); background: rgba(142,170,200,0.1); }
+  .pill.selected-general { border-color: var(--accent2); color: var(--accent2); background: rgba(143,184,160,0.1); }
+  .pill.selected-mental { border-color: var(--accent5); color: var(--accent5); background: rgba(168,158,200,0.1); }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    resize: none;
+    outline: none;
+    min-height: 48px;
+    max-height: 140px;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover { background: #d4b57a; transform: scale(1.04); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .send-btn svg { color: #0f0e0c; }
+
+  .mic-btn {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  .mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .mic-btn.recording {
+    background: rgba(200,169,110,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    animation: micPulse 1s ease-in-out infinite;
+  }
+  .mic-btn.unsupported { opacity: 0.3; cursor: not-allowed; }
+
+  @keyframes micPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(200,169,110,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(200,169,110,0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Transcript button */
+  .transcript-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .transcript-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .transcript-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .clear-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .clear-btn:hover { border-color: #c07070; color: #c07070; }
+
+  /* Markdown-ish rendering */
+  .bubble p { margin-bottom: 8px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble strong { font-weight: 600; color: var(--text); }
+  .bubble em { font-style: italic; }
+  .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
+  .bubble li { margin-bottom: 3px; }
+
+  /* Profile screen */
+  .profile-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    animation: fadeUp 0.4s ease both;
+  }
+  .profile-screen.hidden { display: none; }
+
+  .profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 360px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  .profile-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .profile-sub {
+    font-size: 13px; color: var(--text-muted);
+    text-align: center; margin-top: -16px; line-height: 1.5;
+  }
+
+  .profile-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .profile-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    transition: all 0.18s; text-align: left;
+  }
+  .profile-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .profile-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 14px; color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .profile-info { flex: 1; }
+  .profile-name { font-weight: 500; }
+  .profile-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .profile-divider {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-dim); font-size: 11px;
+  }
+  .profile-divider::before, .profile-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .new-profile-row {
+    display: flex; gap: 8px;
+  }
+
+  .profile-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .profile-input:focus { border-color: var(--accent); }
+  .profile-input::placeholder { color: var(--text-dim); }
+
+  .profile-create-btn {
+    padding: 10px 16px; border-radius: 10px;
+    background: var(--accent); border: none;
+    color: #0f0e0c; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.18s; white-space: nowrap;
+  }
+  .profile-create-btn:hover { background: #d4b57a; }
+
+  .apikey-section {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .apikey-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+  .apikey-label a { color: var(--accent); text-decoration: none; }
+  .apikey-row { display: flex; gap: 8px; }
+  .apikey-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .apikey-input:focus { border-color: var(--accent); }
+  .apikey-input::placeholder { color: var(--text-dim); }
+  .apikey-save-btn {
+    padding: 9px 14px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .apikey-save-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .apikey-status {
+    font-size: 11px;
+    color: var(--accent2);
+    min-height: 14px;
+  }
+
+  /* Switch profile button in header */
+  .switch-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px; cursor: pointer; transition: all 0.2s;
+  }
+  .switch-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .active-profile-name { font-weight: 600; color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Profile selection screen -->
+<div class="profile-screen" id="profileScreen">
+  <div class="profile-card">
+    <div class="profile-title">Wer bist du?</div>
+    <div class="profile-sub">Jede Person hat ihr eigenes Gedächtnis.</div>
+    <div class="profile-list" id="profileList">
+      <!-- filled by JS -->
+    </div>
+    <div class="profile-divider">oder neu anlegen</div>
+    <div class="new-profile-row">
+      <input class="profile-input" id="newProfileInput" placeholder="Dein Name..." maxlength="30"
+        onkeydown="if(event.key==='Enter') createProfile()">
+      <button class="profile-create-btn" onclick="createProfile()">Los</button>
+    </div>
+    <div class="apikey-section">
+      <div class="apikey-label">API Key — <a href="https://platform.anthropic.com" target="_blank">platform.anthropic.com</a> → API Keys</div>
+      <div class="apikey-row">
+        <input class="apikey-input" id="apikeyInput" type="password" placeholder="sk-ant-...">
+        <button class="apikey-save-btn" onclick="saveApiKey()">Speichern</button>
+      </div>
+      <div class="apikey-status" id="apikeyStatus"></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-left">
+    <span class="logo">Mein Assistent</span>
+    <span class="tagline" id="headerTagline">Dein persönlicher Gesprächspartner</span>
+  </div>
+  <div class="header-right">
+    <span id="memoryBadge" style="font-size:11px;color:#4a4844;opacity:0.4;">🧠 Noch kein Gedächtnis</span>
+    <button class="switch-btn" onclick="switchProfile()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      <span id="activeProfileLabel">–</span>
+    </button>
+    <button class="clear-btn" id="clearBtn" onclick="clearChat()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      Leeren
+    </button>
+    <button class="transcript-btn" id="transcriptBtn" onclick="downloadTranscript()" disabled>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Transcript speichern
+    </button>
+  </div>
+</header>
+
+<div class="crisis-banner" id="crisisBanner">
+  <span class="crisis-icon">🤍</span>
+  <span class="crisis-text">
+    Wenn du dich in einer Krise befindest oder akute Gedanken hegst, dir selbst zu schaden:<br>
+    <strong>Telefonseelsorge: 0800 111 0 111</strong> — kostenlos, 24/7, anonym.
+  </span>
+  <a class="crisis-link" href="tel:08001110111">Jetzt anrufen</a>
+</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">✦</div>
+    <div class="empty-title">Worüber möchtest du reden?</div>
+    <div class="empty-sub">Wähle ein Thema oder schreib einfach drauf los — ich bin für dich da.</div>
+    <div class="suggestions">
+      <button class="suggestion-chip" onclick="quickStart('vacation')">☀️ Urlaub planen</button>
+      <button class="suggestion-chip" onclick="quickStart('partner')">💛 Beziehung</button>
+      <button class="suggestion-chip" onclick="quickStart('job')">💼 Neuer Job</button>
+      <button class="suggestion-chip" onclick="quickStart('general')">💬 Einfach reden</button>
+      <button class="suggestion-chip" onclick="quickStart('mental')">🤍 Wie es mir geht</button>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="topic-pills">
+    <button class="pill" id="pill-vacation" onclick="selectTopic('vacation')">☀️ Urlaub</button>
+    <button class="pill" id="pill-partner" onclick="selectTopic('partner')">💛 Partner</button>
+    <button class="pill" id="pill-job" onclick="selectTopic('job')">💼 Neuer Job</button>
+    <button class="pill" id="pill-general" onclick="selectTopic('general')">💬 Allgemein</button>
+    <button class="pill" id="pill-mental" onclick="selectTopic('mental')">🤍 Seele & Stimmung</button>
+  </div>
+  <div class="input-row">
+    <textarea id="msgInput" placeholder="Schreib mir oder sprich..." rows="1"
+      oninput="autoResize(this)"
+      onkeydown="handleKey(event)"></textarea>
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Sprechen">
+      <svg id="micIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    </button>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+  <!-- Voice status bar -->
+  <div id="voiceBar" style="display:none;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.2);">
+    <div id="voicePulse" style="width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite;flex-shrink:0;"></div>
+    <span id="voiceStatus" style="font-size:12px;color:var(--accent);flex:1;">Höre zu…</span>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-muted);cursor:pointer;">
+      <input type="checkbox" id="autoSpeakToggle" checked style="accent-color:var(--accent);"> Vorlesen
+    </label>
+  </div>
+
+<script>
+// ── Storage abstraction: window.storage (Claude) → localStorage (local file) ──
+const store = (() => {
+  const useCloud = typeof window.storage !== 'undefined' && window.storage !== null;
+  return {
+    async get(key) {
+      if (useCloud) {
+        try { const r = await window.storage.get(key); return r ? r.value : null; } catch(_) { return null; }
+      } else {
+        return localStorage.getItem(key);
+      }
+    },
+    async set(key, value) {
+      if (useCloud) {
+        try { await window.storage.set(key, value); } catch(_) {}
+      } else {
+        try { localStorage.setItem(key, value); } catch(_) {}
+      }
+    },
+    async delete(key) {
+      if (useCloud) {
+        try { await window.storage.delete(key); } catch(_) {}
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+  };
+})();
+
+const SHARED_CHARACTER = `
+Dein Charakter — in ALLEN Themen:
+- Du bist kein Assistent, du bist Marcs Gesprächspartner. Kein Service-Ton, kein "Gerne helfe ich dir dabei".
+- Sei direkt. Sag was du denkst, auch wenn es unbequem ist. Wenn Marc einen Fehler macht oder sich selbst belügt, sag es — freundlich aber klar.
+- Frag nach, hak nach, widersprich wenn nötig. Ein echter Dialog, kein Monolog.
+- Keine ellenlangen Antworten. Kurz, klar, auf den Punkt — dann lass Marc reden.
+- Stell immer nur EINE Frage, nie mehrere auf einmal.
+- Duze Marc. Keine Förmlichkeit.
+- Kein Loben ohne Grund. Kein "Super, dass du das ansprichst!".
+- Antworte immer auf Deutsch.
+`;
+
+const SYSTEM_PROMPTS = {
+  vacation: SHARED_CHARACTER + `
+Thema: Urlaubsplanung.
+Marc liebt Autos, Radfahren, Kochen, Musik — und lebt in München. Hilf ihm den richtigen Urlaub zu finden.
+Wenn seine Ideen unrealistisch sind (Budget, Zeit, Erwartungen), sag es direkt. Stell konkrete Gegenfragen.
+Kein Reisebüro-Ton — eher wie ein Freund der viel gereist ist und kein Blatt vor den Mund nimmt.`,
+
+  partner: SHARED_CHARACTER + `
+Thema: Beziehung & Partnerschaft.
+Marcs Freundin leidet manchmal unter Heimweh. Hör zu, aber wenn Marc sich falsch verhält oder Dinge schönredet — sag es.
+Du bist nicht auf seiner Seite, du bist auf der Seite der Wahrheit. Manchmal ist das dasselbe, manchmal nicht.
+Keine Therapeuten-Sprache. Reden wie zwei Freunde beim Bier.`,
+
+  job: SHARED_CHARACTER + `
+Thema: Karriere & Jobwechsel.
+Marc ist Product Owner und Engineer in München, ADAS-Bereich. Er kennt sich aus — behandle ihn entsprechend.
+Wenn er sich unter Wert verkauft, sag es. Wenn seine Erwartungen unrealistisch sind, sag es auch.
+Hilf ihm bei Bewerbung, Strategie, Gehaltsverhandlung — aber schön reden gilt nicht.`,
+
+  general: SHARED_CHARACTER + `
+Thema: Alles und nichts.
+Sei Marcs Sparringspartner. Egal was kommt — denk mit, hak nach, sag deine Meinung.
+Wenn er im Kreis dreht, sag es. Wenn er einen blinden Fleck hat, zeig ihn auf.
+Kein Smalltalk um des Smalltalks willen — geh in die Tiefe wenn es Sinn macht.`,
+
+  mental: SHARED_CHARACTER + `
+Thema: Mentale Gesundheit & Stimmung. Marc wartet auf einen Therapieplatz.
+- Hör erst zu. Wirklich. Bevor du irgendetwas sagst, lass Marc ankommen.
+- Validiere was er fühlt — aber ohne Floskeln. "Das klingt hart" ist besser als "Das ist völlig verständlich."
+- Direkt sein heißt hier: ehrlich sein, nicht hart sein. Wenn Marc sich selbst zu sehr runtermacht, sag das. Wenn er etwas verdrängt, frag danach.
+- Keine Ratschläge außer er fragt. Erst zuhören, dann — wenn überhaupt — vorsichtig spiegeln.
+- Erinnere ihn gelegentlich, aktiv nach einem Therapieplatz zu suchen. Nicht jedes Mal, aber wenn es passt.
+- Wenn er Gedanken äußert sich selbst zu schaden: warm bleiben, ernst nehmen, IMMER auf die Telefonseelsorge hinweisen (0800 111 0 111, kostenlos, 24/7).
+- Kein "Du schaffst das!" ohne Substanz.`
+};
+
+const TOPIC_LABELS = {
+  vacation: '☀️ Urlaub',
+  partner: '💛 Partner',
+  job: '💼 Job',
+  general: '💬 Allgemein',
+  mental: '🤍 Seele & Stimmung'
+};
+
+const STORAGE_PROFILES = 'agent-profiles';
+const STORAGE_APIKEY   = 'agent-apikey';
+const MAX_HISTORY      = 40;
+const SUMMARIZE_EVERY  = 8;
+
+let currentProfile = null;
+let apiKey         = '';
+let currentTopic   = 'general';
+let conversationHistory = [];
+let transcript     = [];
+let memoryNote     = '';
+let userTurnCount  = 0;
+let isLoading      = false;
+
+// Storage keys scoped to a profile
+function keys(profile) {
+  const p = profile.toLowerCase().replace(/\s+/g, '-');
+  return {
+    history:    `agent-${p}-history`,
+    memory:     `agent-${p}-memory`,
+    transcript: `agent-${p}-transcript`
+  };
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('msgInput').addEventListener('input', updateSendBtn);
+document.getElementById('newProfileInput').addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); createProfile(); }
+});
+initApp();
+
+async function initApp() {
+  try { apiKey = (await store.get(STORAGE_APIKEY)) || ''; } catch(_) {}
+  initProfileScreen();
+  // Show key status on profile screen
+  if (apiKey) {
+    document.getElementById('apikeyStatus').textContent = '✓ API Key gespeichert';
+    document.getElementById('apikeyInput').placeholder = 'sk-ant-... (bereits gespeichert)';
+  }
+}
+
+async function saveApiKey() {
+  const input = document.getElementById('apikeyInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!val.startsWith('sk-ant-')) {
+    document.getElementById('apikeyStatus').textContent = '⚠️ Key sollte mit sk-ant- beginnen';
+    return;
+  }
+  apiKey = val;
+  await store.set(STORAGE_APIKEY, val);
+  input.value = '';
+  input.placeholder = 'sk-ant-... (bereits gespeichert)';
+  document.getElementById('apikeyStatus').textContent = '✓ Gespeichert';
+}
+
+async function initProfileScreen() {
+  const profiles = await loadProfiles();
+  renderProfileList(profiles);
+}
+
+async function loadProfiles() {
+  try {
+    const res = await store.get(STORAGE_PROFILES);
+    return res ? JSON.parse(res) : [];
+  } catch (_) { return []; }
+}
+
+async function saveProfiles(profiles) {
+  try { await store.set(STORAGE_PROFILES, JSON.stringify(profiles)); } catch(_) {}
+}
+
+function renderProfileList(profiles) {
+  const list = document.getElementById('profileList');
+  list.innerHTML = '';
+  if (!profiles.length) return;
+  profiles.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'profile-btn';
+    btn.innerHTML = `
+      <div class="profile-avatar">${name[0].toUpperCase()}</div>
+      <div class="profile-info">
+        <div class="profile-name">${name}</div>
+        <div class="profile-meta">Profil laden</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim)"><polyline points="9 18 15 12 9 6"/></svg>
+    `;
+    btn.onclick = () => loginProfile(name);
+    list.appendChild(btn);
+  });
+}
+
+async function createProfile() {
+  const input = document.getElementById('newProfileInput');
+  const name  = input.value.trim();
+  if (!name) return;
+  input.value = '';
+
+  const profiles = await loadProfiles();
+  if (!profiles.includes(name)) {
+    profiles.push(name);
+    await saveProfiles(profiles);
+  }
+  loginProfile(name);
+}
+
+// ── Seed memories per profile (pre-loaded if no existing memory) ──────────────
+const SEED_MEMORIES = {
+  'marc': `Über Marc (36, München):
+
+BERUF & AUSBILDUNG:
+- Ausbildung: Kfz-Mechatroniker, 5 Jahre Werkstatt
+- Studium: Bachelor + Master Fahrzeugtechnik
+- 4,5 Jahre SW-Entwickler im ADAS-Bereich
+- Seit 4 Jahren Product Owner bei Qualcomm (KI-gestützter AD-Assistent, KPI-Framework, Datenqualität-Framework, AWS Cloud, Teamleitung)
+- Stärken: Strukturieren, Planen, Prozesse verbessern, technisch versiert, Mechanik, Programmierung
+- Präferenzen: viele verschiedene Aufgaben, kein reines SW-Development mehr
+
+FINANZEN:
+- Gehalt: ~8.500€ brutto/Monat Base + ESPP + RSUs (15k–30k/Jahr)
+- Keine Schulden, keine Kinder, keine Familienpflichten
+- Gesetzliche + private Altersvorsorge
+
+HOBBYS:
+- Segeln, Outdoor, Laufen, Gym, Holzarbeiten, Autos, Wandern, Motorsport (Nürburgring), Musik (Rock, Punk, Metal)
+- Ehrenamtlich aktiv in einer Hilfsorganisation (Vermittlungsrolle)
+
+BEZIEHUNGEN:
+- Aktuell single (Trennung ~1 Monat her)
+- Tami (Tamari) aus Georgien, 2019-2024, 5 Jahre. Er hat Schluss gemacht — seine Gefühle reichten nicht für den nächsten Schritt (Heirat, Kinder). Ihre Gefühle waren nie das Problem. Kein Sex (sie orthodox). Marc war im Kopf schon länger fertig, hat sich fast 2 Monate Zeit gelassen um sicher zu sein.
+- Noha aus Marokko, ca. 1 Jahr, 10 Jahre jünger, Fernbeziehung. Kommunikation besser als mit Tami. Eifersuchtsprobleme. Sie hat ohne Erklärung Schluss gemacht — hat Marc sehr getroffen, kein richtiger Abschluss.
+- Nura aus Palästina, ca. 3,5 Monate, vor ca. 1 Monat Schluss. Marc sah sie als nahezu perfekt: Kommunikation, Idealismus, Direktheit, Aussehen. Sie hat erklärt warum. Marc denkt täglich daran.
+
+PROBLEME MIT NURA:
+- Nura politisch aktiv (Gaza/Palästina). Marc war sprachlos — kein persönlicher Bezug zum Krieg. Sie las es als Desinteresse, was er nicht wollte.
+- Kommunikationsunterschied: Marc achtet sehr auf Formulierungen. Nura blieb ruhig wenn aufgebracht, wählte Worte aber nicht bewusst. Diesen Unterschied haben sie zu spät erkannt.
+- Nura hat ihm gespiegelt, dass er Frauen anstarrt. Marc hat es zuerst abgestritten, akzeptiert es jetzt.
+
+SELBSTREFLEXION & PERSÖNLICHKEIT:
+- Spielt oft Teufeladvokat — nimmt bei starken Meinungen automatisch die Gegenseite ein, auch wenn er sie nicht wirklich vertritt. Wirkt dadurch extrem.
+- Wird in Diskussionen emotional, lauter, gereizt — ohne es selbst so wahrzunehmen. Mehrere Personen unabhaengig gespiegelt. Bei der Arbeit kontrollierbar, bei Nahestehenden nicht.
+- Glaubt es vom Vater geerbt zu haben — Vater hat Aggressions-/Wutproblem, kennt kaum andere Emotionen.
+- Hat das Gefuehl sein natuerliches Ich trifft schlechte Entscheidungen — reguliert vieles bewusst ueberm Kopf: Emotionen, sogar Bewegungskoordination. Denkt viel mehr ueber Aktionen nach als andere.
+- Ca. 8 Therapiepraxen angeschrieben, bisher nur Absagen oder lange Wartezeiten.
+
+UMGANG MIT MARC:
+- Direkt und ehrlich, kein Schoenreden
+- Echter Dialog, nicht nur Bestaetigung
+- Beim Anstarren und Diskussionsverhalten: er hat es akzeptiert, nicht nochmal in Frage stellen
+- Beim Thema Therapie/Selbstreflexion: zuhoeren, spiegeln, nicht draengeln`
+};
+
+async function loginProfile(name) {
+  currentProfile = name;
+  document.getElementById('profileScreen').classList.add('hidden');
+  document.getElementById('activeProfileLabel').textContent = name;
+  document.getElementById('headerTagline').textContent = `Hallo, ${name} 👋`;
+
+  // Reset state
+  conversationHistory = [];
+  transcript = [];
+  memoryNote = '';
+  userTurnCount = 0;
+  document.getElementById('chatArea').innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">Worüber möchtest du reden?</div>
+      <div class="empty-sub">Wähle ein Thema oder schreib einfach drauf los — ich bin für dich da.</div>
+      <div class="suggestions">
+        <button class="suggestion-chip" onclick="quickStart('vacation')">☀️ Urlaub planen</button>
+        <button class="suggestion-chip" onclick="quickStart('partner')">💛 Beziehung</button>
+        <button class="suggestion-chip" onclick="quickStart('job')">💼 Neuer Job</button>
+        <button class="suggestion-chip" onclick="quickStart('general')">💬 Einfach reden</button>
+        <button class="suggestion-chip" onclick="quickStart('mental')">🤍 Wie es mir geht</button>
+      </div>
+    </div>`;
+  document.getElementById('transcriptBtn').disabled = true;
+  selectTopic('general');
+  showMemoryBadge(false);
+
+  await loadFromStorage();
+
+  // If no memory yet, check for a seed memory for this profile
+  if (!memoryNote) {
+    const seed = SEED_MEMORIES[name.toLowerCase()];
+    if (seed) {
+      memoryNote = seed;
+      await saveToStorage();
+      showMemoryBadge(true);
+    }
+  }
+}
+
+function switchProfile() {
+  currentProfile = null;
+  document.getElementById('profileScreen').classList.remove('hidden');
+  initProfileScreen();
+}
+
+// ── Storage helpers ───────────────────────────────────────────────────────────
+async function loadFromStorage() {
+  if (!currentProfile) return;
+  const k = keys(currentProfile);
+  try {
+    const [histVal, memVal, txVal] = await Promise.all([
+      store.get(k.history),
+      store.get(k.memory),
+      store.get(k.transcript)
+    ]);
+    if (memVal)  memoryNote = memVal;
+    if (txVal)   transcript = JSON.parse(txVal || '[]');
+    if (histVal) conversationHistory = JSON.parse(histVal || '[]');
+
+    if (conversationHistory.length > 0) {
+      renderHistory();
+      showMemoryBadge(true);
+      document.getElementById('transcriptBtn').disabled = false;
+    }
+  } catch (_) {}
+}
+
+async function saveToStorage() {
+  if (!currentProfile) return;
+  const k = keys(currentProfile);
+  const trimmed = conversationHistory.slice(-MAX_HISTORY);
+  conversationHistory = trimmed;
+  try {
+    await Promise.all([
+      store.set(k.history,    JSON.stringify(trimmed)),
+      store.set(k.memory,     memoryNote),
+      store.set(k.transcript, JSON.stringify(transcript))
+    ]);
+  } catch (_) {}
+}
+
+// ── Memory summarisation ──────────────────────────────────────────────────────
+async function updateMemory() {
+  if (conversationHistory.length < 4) return;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' } : {}) },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: `Du bist ein kompakter Gedächtnis-Assistent. 
+Fasse das Gespräch in maximal 200 Wörtern zusammen: Was hat Marc erzählt? Welche Themen, Entscheidungen, Gefühle, offene Punkte? 
+Schreib sachlich, stichpunktartig, auf Deutsch. Kein Blabla. 
+Bestehende Erinnerungen ergänzen, nicht ersetzen — fasse beides zusammen wenn vorhanden.`,
+        messages: [
+          {
+            role: 'user',
+            content: `Bestehende Erinnerung:\n${memoryNote || '(keine)'}\n\nNeue Gesprächsausschnitte:\n` +
+              conversationHistory.slice(-20).map(m => `${m.role === 'user' ? 'Marc' : 'Agent'}: ${m.content}`).join('\n')
+          }
+        ]
+      })
+    });
+    const data = await res.json();
+    const summary = data.content?.[0]?.text;
+    if (summary) memoryNote = summary;
+  } catch (_) {}
+}
+
+// ── System prompt with memory injected ───────────────────────────────────────
+function buildSystemPrompt(topic) {
+  let prompt = SYSTEM_PROMPTS[topic];
+  if (memoryNote) {
+    prompt += `\n\n---\nDAS WEISST DU BEREITS ÜBER MARC (aus früheren Gesprächen):\n${memoryNote}\nNutze dieses Wissen natürlich — erwähne es nicht explizit, außer es passt in den Gesprächsfluss.`;
+  }
+  return prompt;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function selectTopic(topic) {
+  currentTopic = topic;
+  document.querySelectorAll('.pill').forEach(p => p.className = 'pill');
+  const pill = document.getElementById('pill-' + topic);
+  if (pill) pill.className = 'pill selected-' + topic;
+  const banner = document.getElementById('crisisBanner');
+  if (banner) banner.classList.toggle('visible', topic === 'mental');
+}
+
+function quickStart(topic) {
+  selectTopic(topic);
+  const starters = {
+    vacation: 'Ich möchte einen Urlaub planen. Wo soll ich anfangen?',
+    partner:  'Ich würde gerne über meine Beziehung sprechen.',
+    job:      'Ich denke über einen Jobwechsel nach. Kannst du mir helfen?',
+    general:  'Hey! Ich wollte einfach mal reden.',
+    mental:   'Ich möchte kurz erzählen, wie es mir gerade geht.'
+  };
+  document.getElementById('msgInput').value = starters[topic];
+  autoResize(document.getElementById('msgInput'));
+  updateSendBtn();
+  document.getElementById('msgInput').focus();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+function updateSendBtn() {
+  const val = document.getElementById('msgInput').value.trim();
+  document.getElementById('sendBtn').disabled = !val || isLoading;
+}
+
+function handleKey(e) {
+  e.stopPropagation();
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!document.getElementById('sendBtn').disabled) sendMessage();
+  }
+}
+
+function showMemoryBadge(hasMemory) {
+  const badge = document.getElementById('memoryBadge');
+  if (badge) {
+    badge.textContent = hasMemory ? '🧠 Erinnerung aktiv' : '🧠 Noch kein Gedächtnis';
+    badge.style.opacity = hasMemory ? '1' : '0.4';
+  }
+}
+
+// ── Render saved history on load ──────────────────────────────────────────────
+function renderHistory() {
+  document.getElementById('emptyState')?.remove();
+  const area = document.getElementById('chatArea');
+
+  // Show a session divider
+  const divider = document.createElement('div');
+  divider.style.cssText = 'text-align:center;padding:16px 28px 8px;font-size:11px;color:#4a4844;letter-spacing:0.5px;';
+  divider.textContent = '── Frühere Nachrichten ──';
+  area.appendChild(divider);
+
+  // Show last 20 messages of history visually
+  const visible = conversationHistory.slice(-20);
+  visible.forEach(msg => {
+    const role = msg.role === 'user' ? 'user' : 'ai';
+    appendMessage(role, msg.content, msg.topic || 'general', msg.time || '', true);
+  });
+
+  // Another divider for new session
+  const divider2 = document.createElement('div');
+  divider2.style.cssText = 'text-align:center;padding:8px 28px 16px;font-size:11px;color:#4a4844;letter-spacing:0.5px;';
+  divider2.textContent = '── Neue Session ──';
+  area.appendChild(divider2);
+
+  area.scrollTop = area.scrollHeight;
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text || isLoading) return;
+
+  input.value = '';
+  autoResize(input);
+  updateSendBtn();
+  document.getElementById('emptyState')?.remove();
+
+  const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const userMsg = { role: 'user', content: text, topic: currentTopic, time: ts };
+  conversationHistory.push(userMsg);
+  transcript.push({ role: 'user', topic: currentTopic, text, time: ts });
+  appendMessage('user', text, currentTopic, ts);
+  document.getElementById('transcriptBtn').disabled = false;
+
+  userTurnCount++;
+  const typingId = showTyping();
+  isLoading = true;
+  updateSendBtn();
+
+  // Summarise memory every N turns (in background, don't await)
+  if (userTurnCount % SUMMARIZE_EVERY === 0) {
+    updateMemory().then(() => saveToStorage());
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' } : {}) },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: buildSystemPrompt(currentTopic),
+        messages: conversationHistory.map(m => ({ role: m.role, content: m.content }))
+      })
+    });
+
+    const data = await res.json();
+    removeTyping(typingId);
+
+    const reply = data.content?.[0]?.text || 'Ich konnte keine Antwort generieren.';
+    const aiTs  = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+    conversationHistory.push({ role: 'assistant', content: reply, topic: currentTopic, time: aiTs });
+    transcript.push({ role: 'assistant', topic: currentTopic, text: reply, time: aiTs });
+
+    appendMessage('ai', reply, currentTopic, aiTs);
+    speakText(reply);
+    showMemoryBadge(!!memoryNote);
+    await saveToStorage();
+
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage('ai', 'Verbindungsfehler. Bitte versuche es erneut.', currentTopic, '');
+  }
+
+  isLoading = false;
+  updateSendBtn();
+}
+
+// ── Append message bubble ─────────────────────────────────────────────────────
+function appendMessage(role, text, topic, time, fromHistory = false) {
+  const area = document.getElementById('chatArea');
+  const row  = document.createElement('div');
+  row.className = 'message-row ' + role;
+  if (fromHistory) row.style.opacity = '0.65';
+
+  const formatted = formatText(text);
+  row.innerHTML = `
+    <div class="avatar ${role === 'ai' ? 'ai' : 'user'}">${role === 'ai' ? 'A' : 'M'}</div>
+    <div>
+      <div class="bubble ${role === 'ai' ? 'ai' : 'user'}">${formatted}</div>
+      <div class="message-meta">
+        ${time ? `<span>${time}</span>` : ''}
+        ${topic ? `<span class="topic-tag ${topic}">${TOPIC_LABELS[topic] || topic}</span>` : ''}
+      </div>
+    </div>
+  `;
+
+  area.appendChild(row);
+  area.scrollTop = area.scrollHeight;
+}
+
+function formatText(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^(.+)$/, '<p>$1</p>');
+}
+
+function showTyping() {
+  const area = document.getElementById('chatArea');
+  const id   = 'typing-' + Date.now();
+  const div  = document.createElement('div');
+  div.id = id;
+  div.className = 'message-row ai';
+  div.innerHTML = `
+    <div class="avatar ai">A</div>
+    <div><div class="bubble ai">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+      </div>
+    </div></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+
+// ── Transcript download ───────────────────────────────────────────────────────
+function downloadTranscript() {
+  if (!transcript.length) return;
+  const now = new Date();
+  let content = `GESPRÄCHSPROTOKOLL — Mein Assistent\n`;
+  content += `Erstellt am: ${now.toLocaleDateString('de-DE')} um ${now.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}\n`;
+  if (memoryNote) content += `\nGedächtnis-Zusammenfassung:\n${memoryNote}\n`;
+  content += `${'─'.repeat(50)}\n\n`;
+  let lastTopic = '';
+  transcript.forEach(e => {
+    if (e.topic !== lastTopic) { lastTopic = e.topic; content += `\n[${TOPIC_LABELS[e.topic]}]\n\n`; }
+    content += `${e.role === 'user' ? 'Du' : 'Agent'}${e.time ? ` (${e.time})` : ''}:\n${e.text}\n\n`;
+  });
+  content += `${'─'.repeat(50)}\nNachrichten gesamt: ${transcript.length}\n`;
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `Protokoll_${now.toISOString().slice(0,10)}.txt`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+async function clearChat() {
+  if (!transcript.length && !memoryNote) return;
+
+  const choice = confirm('Nur die aktuelle Session löschen?\n\nOK = Nur diese Session\nAbbrechen = Alles inkl. Gedächtnis löschen');
+
+  if (choice) {
+    conversationHistory = [];
+    transcript = [];
+    userTurnCount = 0;
+  } else {
+    if (!confirm('Wirklich ALLES löschen — inkl. aller Erinnerungen?')) return;
+    conversationHistory = [];
+    transcript = [];
+    memoryNote = '';
+    userTurnCount = 0;
+    if (currentProfile) {
+      const k = keys(currentProfile);
+      try {
+        await Promise.all([
+          store.delete(k.history),
+          store.delete(k.memory),
+          store.delete(k.transcript)
+        ]);
+      } catch(_) {}
+    }
+  }
+
+  await saveToStorage();
+
+  const area = document.getElementById('chatArea');
+  area.innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">Worüber möchtest du reden?</div>
+      <div class="empty-sub">Wähle ein Thema oder schreib einfach drauf los — ich bin für dich da.</div>
+      <div class="suggestions">
+        <button class="suggestion-chip" onclick="quickStart('vacation')">☀️ Urlaub planen</button>
+        <button class="suggestion-chip" onclick="quickStart('partner')">💛 Beziehung</button>
+        <button class="suggestion-chip" onclick="quickStart('job')">💼 Neuer Job</button>
+        <button class="suggestion-chip" onclick="quickStart('general')">💬 Einfach reden</button>
+        <button class="suggestion-chip" onclick="quickStart('mental')">🤍 Wie es mir geht</button>
+      </div>
+    </div>`;
+  document.getElementById('transcriptBtn').disabled = true;
+  showMemoryBadge(!!memoryNote);
+  selectTopic('general');
+}
+
+
+// ── Voice: Speech Recognition ─────────────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+let finalTranscript = '';
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('unsupported');
+    btn.title = 'Spracherkennung nicht unterstützt — Chrome auf Desktop empfohlen';
+    return null;
+  }
+
+  // Warn if not on https or localhost (file:// will block mic in Chrome)
+  if (location.protocol === 'file:') {
+    const btn = document.getElementById('micBtn');
+    btn.title = '⚠️ Lokal: Mikrofon evtl. blockiert. Datei über einen lokalen Server öffnen oder in Claude nutzen.';
+  }
+
+  const r = new SpeechRecognition();
+  r.lang = 'de-DE';
+  r.continuous = false;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    isRecording = true;
+    finalTranscript = '';
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('voiceBar').style.display = 'flex';
+    document.getElementById('voiceStatus').textContent = 'Höre zu…';
+    document.getElementById('msgInput').value = '';
+  };
+
+  r.onresult = (e) => {
+    let interim = '';
+    finalTranscript = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finalTranscript += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    const display = finalTranscript || interim;
+    document.getElementById('msgInput').value = display;
+    autoResize(document.getElementById('msgInput'));
+    updateSendBtn();
+    document.getElementById('voiceStatus').textContent = `"${display.slice(0, 70)}${display.length > 70 ? '…' : ''}"`;
+  };
+
+  r.onend = () => {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('voiceBar').style.display = 'none';
+    const val = document.getElementById('msgInput').value.trim();
+    if (val) {
+      // Small delay so the user sees what was recognized
+      setTimeout(() => sendMessage(), 400);
+    }
+  };
+
+  r.onerror = (e) => {
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    const bar = document.getElementById('voiceBar');
+    const status = document.getElementById('voiceStatus');
+    const msgs = {
+      'not-allowed':   '🚫 Mikrofon-Zugriff verweigert — bitte in Browser-Einstellungen erlauben',
+      'no-speech':     '',
+      'network':       '⚠️ Netzwerkfehler bei der Spracherkennung',
+      'service-not-allowed': '🚫 Spracherkennung nicht erlaubt (file:// Protokoll?) — in Claude öffnen',
+    };
+    const msg = msgs[e.error] ?? `Fehler: ${e.error}`;
+    if (msg) {
+      status.textContent = msg;
+      bar.style.display = 'flex';
+      setTimeout(() => { bar.style.display = 'none'; }, 4000);
+    } else {
+      bar.style.display = 'none';
+    }
+  };
+
+  return r;
+}
+
+function toggleMic() {
+  const btn = document.getElementById('micBtn');
+  if (btn.classList.contains('unsupported')) return;
+
+  if (isRecording) {
+    recognition?.stop();
+    return;
+  }
+
+  window.speechSynthesis?.cancel();
+
+  // Always create fresh instance to avoid state issues
+  recognition = initSpeechRecognition();
+  if (!recognition) return;
+
+  try {
+    recognition.start();
+  } catch(err) {
+    document.getElementById('voiceStatus').textContent = 'Fehler beim Starten: ' + err.message;
+    document.getElementById('voiceBar').style.display = 'flex';
+    setTimeout(() => { document.getElementById('voiceBar').style.display = 'none'; }, 3000);
+  }
+}
+
+// ── Voice: Text-to-Speech ─────────────────────────────────────────────────────
+function speakText(text) {
+  if (!window.speechSynthesis) return;
+  const toggle = document.getElementById('autoSpeakToggle');
+  if (toggle && !toggle.checked) return;
+
+  window.speechSynthesis.cancel();
+
+  const clean = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,3}\s/g, '')
+    .replace(/\n/g, ' ');
+
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.lang = 'de-DE';
+  utter.rate = 1.0;
+  utter.pitch = 1.0;
+
+  const trySpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const deVoice = voices.find(v => v.lang.startsWith('de') && !v.name.includes('Google'))
+                  || voices.find(v => v.lang.startsWith('de'));
+    if (deVoice) utter.voice = deVoice;
+    window.speechSynthesis.speak(utter);
+  };
+
+  // Voices may not be loaded yet
+  if (window.speechSynthesis.getVoices().length > 0) {
+    trySpeak();
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', trySpeak, { once: true });
+  }
+}
+
+// Init mic check on load
+window.addEventListener('DOMContentLoaded', () => {
+  const test = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!test) {
+    document.getElementById('micBtn').classList.add('unsupported');
+  }
+});
+
+</script>
+</body>
+</html>
