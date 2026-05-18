@@ -1408,8 +1408,10 @@ function initSpeechRecognition() {
   };
 
   r.onend = () => {
-    // If still supposed to be recording (not manually stopped), auto-restart
     if (isRecording) {
+      // Unexpected stop — save current input as base and restart cleanly
+      accumulatedTranscript = document.getElementById('msgInput').value.trim();
+      if (accumulatedTranscript) accumulatedTranscript += ' ';
       try { r.start(); return; } catch(_) {}
     }
     // Manual stop
