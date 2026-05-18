@@ -1345,10 +1345,10 @@ async function clearChat() {
 
 
 // ── Voice: Speech Recognition ─────────────────────────────────────────────────
+// ── Voice Recognition ─────────────────────────────────────────────────────────
 let recognition = null;
 let isRecording = false;
-let accumulatedTranscript = '';
-let sessionFinals = '';
+let baseText = '';   // text from before current recording session
 let wakeLock = null;
 
 async function requestWakeLock() {
@@ -1361,18 +1361,17 @@ function releaseWakeLock() {
 }
 
 function initSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
     document.getElementById('micBtn').classList.add('unsupported');
-    document.getElementById('micBtn').title = 'Spracherkennung nicht unterstützt — Chrome empfohlen';
+    document.getElementById('micBtn').title = 'Spracherkennung nicht unterstützt';
     return null;
   }
 
-  const r = new SpeechRecognition();
+  const r = new SR();
   r.lang = 'de-DE';
   r.continuous = true;
   r.interimResults = true;
-  r.maxAlternatives = 1;
 
   r.onstart = () => {
     requestWakeLock();
@@ -1381,53 +1380,43 @@ function initSpeechRecognition() {
     document.getElementById('voiceStatus').textContent = '🔴 Aufnahme läuft… (Stopp zum Senden)';
   };
 
+  // Rebuild text from scratch every time — immune to duplicate events
   r.onresult = (e) => {
-    // Only process NEW results via e.resultIndex — prevents duplicates
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        sessionFinals += e.results[i][0].transcript + ' ';
-      }
+    let sessionText = '';
+    for (let i = 0; i < e.results.length; i++) {
+      sessionText += e.results[i][0].transcript;
+      if (e.results[i].isFinal) sessionText += ' ';
     }
-    const lastResult = e.results[e.results.length - 1];
-    const interim = lastResult.isFinal ? '' : lastResult[0].transcript;
-    const display = (accumulatedTranscript + sessionFinals + interim).trim();
-    document.getElementById('msgInput').value = display;
+    document.getElementById('msgInput').value = (baseText + sessionText).trim();
     autoResize(document.getElementById('msgInput'));
     updateSendBtn();
   };
 
   r.onend = () => {
+    // Commit whatever is in the input as the new base
+    baseText = document.getElementById('msgInput').value.trim();
+    if (baseText) baseText += ' ';
+
     releaseWakeLock();
     document.getElementById('micBtn').classList.remove('recording');
-    accumulatedTranscript = (accumulatedTranscript + sessionFinals).trimEnd();
-    if (accumulatedTranscript) accumulatedTranscript += ' ';
-    sessionFinals = '';
+    document.getElementById('voiceBar').style.display = 'none';
 
-    if (!isRecording) {
-      // Manual stop — send if there's text
-      document.getElementById('voiceBar').style.display = 'none';
-      isRecording = false;
-      const val = document.getElementById('msgInput').value.trim();
-      if (val) setTimeout(() => sendMessage(), 300);
-    } else {
-      // Unexpected stop (system interrupt) — show status, preserve text
-      document.getElementById('voiceStatus').textContent = '⏸ Unterbrochen — nochmal drücken';
-      isRecording = false;
+    const wasManualStop = !isRecording;
+    isRecording = false;
+
+    if (wasManualStop && baseText.trim()) {
+      setTimeout(() => sendMessage(), 300);
     }
   };
 
   r.onerror = (e) => {
     if (e.error === 'no-speech') return;
-    isRecording = false;
-    releaseWakeLock();
-    document.getElementById('micBtn').classList.remove('recording');
     const msgs = {
       'not-allowed': '🚫 Mikrofon-Zugriff verweigert',
       'network': '⚠️ Netzwerkfehler',
-      'service-not-allowed': '🚫 Nicht erlaubt (HTTPS erforderlich)',
+      'service-not-allowed': '🚫 HTTPS erforderlich'
     };
-    const msg = msgs[e.error] ?? `Fehler: ${e.error}`;
-    document.getElementById('voiceStatus').textContent = msg;
+    document.getElementById('voiceStatus').textContent = msgs[e.error] || `Fehler: ${e.error}`;
     setTimeout(() => { document.getElementById('voiceBar').style.display = 'none'; }, 3000);
   };
 
@@ -1439,26 +1428,24 @@ function toggleMic() {
   if (btn.classList.contains('unsupported')) return;
 
   if (isRecording) {
-    // STOP — triggers onend which sends
+    // STOP — onend will send
     isRecording = false;
     recognition?.stop();
     return;
   }
 
-  // START
+  // START — preserve any existing text
   window.speechSynthesis?.cancel();
+  baseText = document.getElementById('msgInput').value.trim();
+  if (baseText) baseText += ' ';
+
   recognition = initSpeechRecognition();
   if (!recognition) return;
 
-  // Preserve any existing text as base
-  accumulatedTranscript = document.getElementById('msgInput').value.trim();
-  if (accumulatedTranscript) accumulatedTranscript += ' ';
-  sessionFinals = '';
   isRecording = true;
-
   try {
     recognition.start();
-  } catch(err) {
+  } catch (err) {
     isRecording = false;
     document.getElementById('voiceStatus').textContent = 'Fehler: ' + err.message;
     document.getElementById('voiceBar').style.display = 'flex';
