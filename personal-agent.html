@@ -1390,18 +1390,17 @@ function initSpeechRecognition() {
   };
 
   r.onresult = (e) => {
-    let interim = '';
-    let sessionFinal = '';
-    for (let i = 0; i < e.results.length; i++) {
+    // Only process NEW results using e.resultIndex
+    for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        sessionFinal += e.results[i][0].transcript;
-      } else {
-        interim += e.results[i][0].transcript;
+        accumulatedTranscript += e.results[i][0].transcript + ' ';
       }
     }
-    const display = accumulatedTranscript + sessionFinal + interim;
-    if (sessionFinal) accumulatedTranscript += sessionFinal;
-    document.getElementById('msgInput').value = display;
+    // Get current interim result
+    const lastResult = e.results[e.results.length - 1];
+    const interim = lastResult.isFinal ? '' : lastResult[0].transcript;
+    const display = accumulatedTranscript + interim;
+    document.getElementById('msgInput').value = display.trim();
     autoResize(document.getElementById('msgInput'));
     updateSendBtn();
     document.getElementById('voiceStatus').textContent = `"${display.slice(0, 70)}${display.length > 70 ? '…' : ''}"`;
@@ -1409,12 +1408,10 @@ function initSpeechRecognition() {
 
   r.onend = () => {
     if (isRecording) {
-      // Unexpected stop — save current input as base and restart cleanly
-      accumulatedTranscript = document.getElementById('msgInput').value.trim();
-      if (accumulatedTranscript) accumulatedTranscript += ' ';
+      // Unexpected stop — use current input as new base, start fresh session
+      accumulatedTranscript = (document.getElementById('msgInput').value.trim() + ' ').trimStart();
       try { r.start(); return; } catch(_) {}
     }
-    // Manual stop
     releaseWakeLock();
     document.getElementById('micBtn').classList.remove('recording');
     document.getElementById('voiceBar').style.display = 'none';
