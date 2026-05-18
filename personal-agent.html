@@ -1347,7 +1347,8 @@ async function clearChat() {
 // ── Voice: Speech Recognition ─────────────────────────────────────────────────
 let recognition = null;
 let isRecording = false;
-let accumulatedTranscript = ''; // persists across auto-restarts
+let accumulatedTranscript = '';
+let sessionFinals = '';
 let wakeLock = null;
 
 async function requestWakeLock() {
@@ -1355,7 +1356,6 @@ async function requestWakeLock() {
     try { wakeLock = await navigator.wakeLock.request('screen'); } catch(_) {}
   }
 }
-
 function releaseWakeLock() {
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
 }
@@ -1363,16 +1363,9 @@ function releaseWakeLock() {
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    const btn = document.getElementById('micBtn');
-    btn.classList.add('unsupported');
-    btn.title = 'Spracherkennung nicht unterstützt — Chrome auf Desktop empfohlen';
+    document.getElementById('micBtn').classList.add('unsupported');
+    document.getElementById('micBtn').title = 'Spracherkennung nicht unterstützt — Chrome empfohlen';
     return null;
-  }
-
-  // Warn if not on https or localhost (file:// will block mic in Chrome)
-  if (location.protocol === 'file:') {
-    const btn = document.getElementById('micBtn');
-    btn.title = '⚠️ Lokal: Mikrofon evtl. blockiert. Datei über einen lokalen Server öffnen oder in Claude nutzen.';
   }
 
   const r = new SpeechRecognition();
@@ -1382,64 +1375,60 @@ function initSpeechRecognition() {
   r.maxAlternatives = 1;
 
   r.onstart = () => {
-    if (!isRecording) return; // safety check
     requestWakeLock();
     document.getElementById('micBtn').classList.add('recording');
     document.getElementById('voiceBar').style.display = 'flex';
-    document.getElementById('voiceStatus').textContent = 'Höre zu… (nochmal drücken zum Senden)';
+    document.getElementById('voiceStatus').textContent = '🔴 Aufnahme läuft… (Stopp zum Senden)';
   };
 
   r.onresult = (e) => {
-    // Only process NEW results using e.resultIndex
+    // Only process NEW results via e.resultIndex — prevents duplicates
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        accumulatedTranscript += e.results[i][0].transcript + ' ';
+        sessionFinals += e.results[i][0].transcript + ' ';
       }
     }
-    // Get current interim result
     const lastResult = e.results[e.results.length - 1];
     const interim = lastResult.isFinal ? '' : lastResult[0].transcript;
-    const display = accumulatedTranscript + interim;
-    document.getElementById('msgInput').value = display.trim();
+    const display = (accumulatedTranscript + sessionFinals + interim).trim();
+    document.getElementById('msgInput').value = display;
     autoResize(document.getElementById('msgInput'));
     updateSendBtn();
-    document.getElementById('voiceStatus').textContent = `"${display.slice(0, 70)}${display.length > 70 ? '…' : ''}"`;
   };
 
   r.onend = () => {
-    if (isRecording) {
-      // Unexpected stop — use current input as new base, start fresh session
-      accumulatedTranscript = (document.getElementById('msgInput').value.trim() + ' ').trimStart();
-      try { r.start(); return; } catch(_) {}
-    }
     releaseWakeLock();
     document.getElementById('micBtn').classList.remove('recording');
-    document.getElementById('voiceBar').style.display = 'none';
-    const val = document.getElementById('msgInput').value.trim();
-    if (val) setTimeout(() => sendMessage(), 400);
+    accumulatedTranscript = (accumulatedTranscript + sessionFinals).trimEnd();
+    if (accumulatedTranscript) accumulatedTranscript += ' ';
+    sessionFinals = '';
+
+    if (!isRecording) {
+      // Manual stop — send if there's text
+      document.getElementById('voiceBar').style.display = 'none';
+      isRecording = false;
+      const val = document.getElementById('msgInput').value.trim();
+      if (val) setTimeout(() => sendMessage(), 300);
+    } else {
+      // Unexpected stop (system interrupt) — show status, preserve text
+      document.getElementById('voiceStatus').textContent = '⏸ Unterbrochen — nochmal drücken';
+      isRecording = false;
+    }
   };
 
   r.onerror = (e) => {
-    if (e.error === 'no-speech') return; // ignore, auto-restart handles it
+    if (e.error === 'no-speech') return;
     isRecording = false;
     releaseWakeLock();
     document.getElementById('micBtn').classList.remove('recording');
-    const bar = document.getElementById('voiceBar');
-    const status = document.getElementById('voiceStatus');
     const msgs = {
-      'not-allowed':   '🚫 Mikrofon-Zugriff verweigert — bitte in Browser-Einstellungen erlauben',
-      'no-speech':     '',
-      'network':       '⚠️ Netzwerkfehler bei der Spracherkennung',
-      'service-not-allowed': '🚫 Spracherkennung nicht erlaubt (file:// Protokoll?) — in Claude öffnen',
+      'not-allowed': '🚫 Mikrofon-Zugriff verweigert',
+      'network': '⚠️ Netzwerkfehler',
+      'service-not-allowed': '🚫 Nicht erlaubt (HTTPS erforderlich)',
     };
     const msg = msgs[e.error] ?? `Fehler: ${e.error}`;
-    if (msg) {
-      status.textContent = msg;
-      bar.style.display = 'flex';
-      setTimeout(() => { bar.style.display = 'none'; }, 4000);
-    } else {
-      bar.style.display = 'none';
-    }
+    document.getElementById('voiceStatus').textContent = msg;
+    setTimeout(() => { document.getElementById('voiceBar').style.display = 'none'; }, 3000);
   };
 
   return r;
@@ -1450,28 +1439,28 @@ function toggleMic() {
   if (btn.classList.contains('unsupported')) return;
 
   if (isRecording) {
+    // STOP — triggers onend which sends
     isRecording = false;
     recognition?.stop();
     return;
   }
 
+  // START
   window.speechSynthesis?.cancel();
-
-  // Always create fresh instance to avoid state issues
   recognition = initSpeechRecognition();
   if (!recognition) return;
 
-  // Fresh start
+  // Preserve any existing text as base
+  accumulatedTranscript = document.getElementById('msgInput').value.trim();
+  if (accumulatedTranscript) accumulatedTranscript += ' ';
+  sessionFinals = '';
   isRecording = true;
-  accumulatedTranscript = '';
-  document.getElementById('msgInput').value = '';
-  autoResize(document.getElementById('msgInput'));
-  updateSendBtn();
 
   try {
     recognition.start();
   } catch(err) {
-    document.getElementById('voiceStatus').textContent = 'Fehler beim Starten: ' + err.message;
+    isRecording = false;
+    document.getElementById('voiceStatus').textContent = 'Fehler: ' + err.message;
     document.getElementById('voiceBar').style.display = 'flex';
     setTimeout(() => { document.getElementById('voiceBar').style.display = 'none'; }, 3000);
   }
