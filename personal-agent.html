@@ -1042,7 +1042,7 @@ async function updateMemory() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {}) },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 600,
         system: `Du bist ein kompakter Gedächtnis-Assistent. 
 Fasse das Gespräch in maximal 200 Wörtern zusammen: Was hat Marc erzählt? Welche Themen, Entscheidungen, Gefühle, offene Punkte? 
@@ -1183,7 +1183,7 @@ async function sendMessage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {}) },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         system: buildSystemPrompt(currentTopic),
         messages: conversationHistory.map(m => ({ role: m.role, content: m.content }))
