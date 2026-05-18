@@ -1193,6 +1193,14 @@ async function sendMessage() {
     const data = await res.json();
     removeTyping(typingId);
 
+    if (!res.ok) {
+      const errMsg = data?.error?.message || JSON.stringify(data);
+      appendMessage('ai', `API Fehler (${res.status}): ${errMsg}`, currentTopic, '');
+      isLoading = false;
+      updateSendBtn();
+      return;
+    }
+
     const reply = data.content?.[0]?.text || 'Ich konnte keine Antwort generieren.';
     const aiTs  = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
