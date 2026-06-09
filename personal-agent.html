@@ -624,7 +624,15 @@
       <button class="profile-create-btn" onclick="createProfile()">Los</button>
     </div>
     <div class="apikey-section">
-      <div class="apikey-label">API Key — <a href="https://platform.anthropic.com" target="_blank">platform.anthropic.com</a> → API Keys</div>
+      <div class="apikey-label">GitHub Token <span style="color:var(--accent2);font-size:10px;">→ github.com → Settings → Developer settings → PAT (classic) → public_repo</span></div>
+      <div class="apikey-row">
+        <input class="apikey-input" id="githubTokenInput" type="password" placeholder="ghp_...">
+        <button class="apikey-save-btn" onclick="saveGithubToken()">Speichern</button>
+      </div>
+      <div class="apikey-status" id="githubTokenStatus"></div>
+    </div>
+    <div class="apikey-section">
+      <div class="apikey-label">Anthropic API Key (<a href="https://platform.anthropic.com" target="_blank">platform.anthropic.com</a> → API Keys)</div>
       <div class="apikey-row">
         <input class="apikey-input" id="apikeyInput" type="password" placeholder="sk-ant-...">
         <button class="apikey-save-btn" onclick="saveApiKey()">Speichern</button>
@@ -708,39 +716,104 @@
   <div id="voiceBar" style="display:none;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.2);">
     <div id="voicePulse" style="width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite;flex-shrink:0;"></div>
     <span id="voiceStatus" style="font-size:12px;color:var(--accent);flex:1;">Höre zu…</span>
+  </div>
+
+  <!-- Voice settings row -->
+  <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
     <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-muted);cursor:pointer;">
-      <input type="checkbox" id="autoSpeakToggle" checked style="accent-color:var(--accent);"> Vorlesen
+      <input type="checkbox" id="autoSpeakToggle" style="accent-color:var(--accent);"> Vorlesen
     </label>
+    <select id="voiceSelect" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 8px;color:var(--text);font-size:11.5px;font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;">
+      <option value="">Stimme wählen…</option>
+    </select>
   </div>
 
 <script>
-// ── Storage abstraction: window.storage (Claude) → localStorage (local file) ──
-const store = (() => {
-  const useCloud = typeof window.storage !== 'undefined' && window.storage !== null;
-  return {
-    async get(key) {
-      if (useCloud) {
-        try { const r = await window.storage.get(key); return r ? r.value : null; } catch(_) { return null; }
-      } else {
-        return localStorage.getItem(key);
-      }
-    },
-    async set(key, value) {
-      if (useCloud) {
-        try { await window.storage.set(key, value); } catch(_) {}
-      } else {
-        try { localStorage.setItem(key, value); } catch(_) {}
-      }
-    },
-    async delete(key) {
-      if (useCloud) {
-        try { await window.storage.delete(key); } catch(_) {}
-      } else {
-        localStorage.removeItem(key);
-      }
+// ── GitHub Storage (localStorage fallback wenn kein Token) ───────────────────
+const GITHUB_OWNER = 'ignatz89';
+const GITHUB_REPO  = 'personal_agent';
+const GITHUB_FILE  = 'agent-storage.json';
+const GITHUB_API   = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+
+let ghToken  = null;
+let ghCache  = null;   // in-memory cache
+let ghSha    = null;   // SHA für Updates
+let ghLoaded = false;
+
+const store = {
+  async _load() {
+    if (ghLoaded) return;
+    ghToken = localStorage.getItem('github-token');
+
+    if (!ghToken) {
+      // Fallback: localStorage
+      ghCache  = {};
+      ghLoaded = true;
+      return;
     }
-  };
-})();
+
+    try {
+      const res = await fetch(GITHUB_API, {
+        headers: { 'Authorization': `token ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.status === 404) {
+        ghCache = {}; ghSha = null;
+      } else {
+        const data = await res.json();
+        ghSha = data.sha;
+        ghCache = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+      }
+    } catch(_) { ghCache = {}; }
+    ghLoaded = true;
+  },
+
+  async _save() {
+    if (!ghToken) {
+      // Fallback: alles in localStorage (außer API key)
+      Object.entries(ghCache).forEach(([k,v]) => localStorage.setItem(k, v));
+      return;
+    }
+    try {
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(ghCache, null, 2))));
+      const body = { message: 'agent storage update', content };
+      if (ghSha) body.sha = ghSha;
+      const res = await fetch(GITHUB_API, {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${ghToken}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.content?.sha) ghSha = data.content.sha;
+    } catch(_) {}
+  },
+
+  async get(key) {
+    if (key === 'agent-apikey') return localStorage.getItem('agent-apikey');
+    await this._load();
+    return ghCache[key] || null;
+  },
+
+  async set(key, value) {
+    if (key === 'agent-apikey') { localStorage.setItem('agent-apikey', value); return; }
+    await this._load();
+    ghCache[key] = value;
+    await this._save();
+  },
+
+  async delete(key) {
+    if (key === 'agent-apikey') { localStorage.removeItem('agent-apikey'); return; }
+    await this._load();
+    delete ghCache[key];
+    await this._save();
+  },
+
+  setToken(token) {
+    localStorage.setItem('github-token', token);
+    ghToken = token; ghCache = null; ghSha = null; ghLoaded = false;
+  },
+
+  hasToken() { return !!localStorage.getItem('github-token'); }
+};
 
 const SHARED_CHARACTER = `
 Dein Charakter — in ALLEN Themen:
@@ -831,13 +904,33 @@ document.getElementById('newProfileInput').addEventListener('keydown', e => {
 initApp();
 
 async function initApp() {
-  try { apiKey = (await store.get(STORAGE_APIKEY)) || ''; } catch(_) {}
+  try { apiKey = localStorage.getItem('agent-apikey') || ''; } catch(_) {}
   initProfileScreen();
-  // Show key status on profile screen
+
+  // Show GitHub token status
+  if (store.hasToken()) {
+    document.getElementById('githubTokenStatus').textContent = '✓ GitHub verbunden — Gedächtnis wird synchronisiert';
+    document.getElementById('githubTokenInput').placeholder = 'ghp_... (bereits gespeichert)';
+  }
+  // Show API key status
   if (apiKey) {
     document.getElementById('apikeyStatus').textContent = '✓ API Key gespeichert';
     document.getElementById('apikeyInput').placeholder = 'sk-ant-... (bereits gespeichert)';
   }
+}
+
+async function saveGithubToken() {
+  const input = document.getElementById('githubTokenInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!val.startsWith('ghp_') && !val.startsWith('github_pat_')) {
+    document.getElementById('githubTokenStatus').textContent = '⚠️ Token sollte mit ghp_ beginnen';
+    return;
+  }
+  store.setToken(val);
+  input.value = '';
+  input.placeholder = 'ghp_... (bereits gespeichert)';
+  document.getElementById('githubTokenStatus').textContent = '✓ GitHub verbunden — Gedächtnis wird synchronisiert';
 }
 
 async function saveApiKey() {
@@ -1454,10 +1547,43 @@ function toggleMic() {
 }
 
 // ── Voice: Text-to-Speech ─────────────────────────────────────────────────────
+function populateVoices() {
+  if (!window.speechSynthesis) return;
+  const voices = window.speechSynthesis.getVoices();
+  const select = document.getElementById('voiceSelect');
+  const toggle = document.getElementById('autoSpeakToggle');
+  if (!select || !toggle.checked) return;
+
+  const deVoices = voices.filter(v => v.lang.startsWith('de'));
+  if (!deVoices.length) return;
+
+  const prev = select.value;
+  select.innerHTML = '<option value="">Standard</option>';
+  deVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name.replace('Google ', '').replace(' DE', '').replace(' de-DE', '');
+    select.appendChild(opt);
+  });
+  if (prev) select.value = prev;
+  select.style.display = 'block';
+}
+
+// Show/hide voice selector based on toggle
+document.getElementById('autoSpeakToggle').addEventListener('change', function() {
+  const select = document.getElementById('voiceSelect');
+  if (this.checked) {
+    populateVoices();
+  } else {
+    select.style.display = 'none';
+    window.speechSynthesis?.cancel();
+  }
+});
+
 function speakText(text) {
   if (!window.speechSynthesis) return;
   const toggle = document.getElementById('autoSpeakToggle');
-  if (toggle && !toggle.checked) return;
+  if (!toggle?.checked) return;
 
   window.speechSynthesis.cancel();
 
@@ -1470,23 +1596,26 @@ function speakText(text) {
   const utter = new SpeechSynthesisUtterance(clean);
   utter.lang = 'de-DE';
   utter.rate = 1.0;
-  utter.pitch = 1.0;
 
   const trySpeak = () => {
     const voices = window.speechSynthesis.getVoices();
-    const deVoice = voices.find(v => v.lang.startsWith('de') && !v.name.includes('Google'))
-                  || voices.find(v => v.lang.startsWith('de'));
-    if (deVoice) utter.voice = deVoice;
+    const selectedName = document.getElementById('voiceSelect')?.value;
+    if (selectedName) {
+      utter.voice = voices.find(v => v.name === selectedName) || null;
+    } else {
+      utter.voice = voices.find(v => v.lang.startsWith('de')) || null;
+    }
     window.speechSynthesis.speak(utter);
   };
 
-  // Voices may not be loaded yet
   if (window.speechSynthesis.getVoices().length > 0) {
     trySpeak();
   } else {
     window.speechSynthesis.addEventListener('voiceschanged', trySpeak, { once: true });
   }
 }
+
+window.speechSynthesis?.addEventListener('voiceschanged', populateVoices);
 
 // Init mic check on load
 window.addEventListener('DOMContentLoaded', () => {
