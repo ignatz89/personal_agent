@@ -649,6 +649,7 @@
   </div>
   <div class="header-right">
     <span id="memoryBadge" style="font-size:11px;color:#4a4844;opacity:0.4;">🧠 Noch kein Gedächtnis</span>
+    <button class="switch-btn" onclick="resetMemory()" title="Gedächtnis mit aktuellem Profil-Stand überschreiben" style="font-size:10.5px;">🔄 Memory</button>
     <button class="switch-btn" onclick="switchProfile()">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
       <span id="activeProfileLabel">–</span>
@@ -1000,48 +1001,79 @@ async function createProfile() {
 
 // ── Seed memories per profile (pre-loaded if no existing memory) ──────────────
 const SEED_MEMORIES = {
-  'marc': `Über Marc (36, München):
+  'marc': `Marc Bartholomäi, 36, München (seit April 2018). Aufgewachsen in 71287 Straubenhardt (bei Stuttgart).
 
-BERUF & AUSBILDUNG:
-- Ausbildung: Kfz-Mechatroniker, 5 Jahre Werkstatt
-- Studium: Bachelor + Master Fahrzeugtechnik
-- 4,5 Jahre SW-Entwickler im ADAS-Bereich
-- Seit 4 Jahren Product Owner bei Qualcomm (KI-gestützter AD-Assistent, KPI-Framework, Datenqualität-Framework, AWS Cloud, Teamleitung)
-- Stärken: Strukturieren, Planen, Prozesse verbessern, technisch versiert, Mechanik, Programmierung
-- Präferenzen: viele verschiedene Aufgaben, kein reines SW-Development mehr
+BERUF:
+- Staff Product Owner bei Qualcomm/Arriver, Unterschleißheim (seit Juni 2022, Beförderung Senior→Staff Nov. 2025)
+- Verantwortet 3 Cloud-Komponenten (AWS) im Bereich Automotive Tooling: KPI-Framework, Datenqualitäts-Framework, KI-Chat-Assistent (liefert Infos über Cloud-System, kann Jobs starten, vereinfacht UI zwischen Stakeholdern und Cloud)
+- Personalverantwortung: fachlich 8 Personen, disziplinarisch 4
+- Zuvor: SW-Entwickler bei Zenuity/Veoneer/Arriver (Nov. 2017–Mai 2022): KPI-Tools für AEB (Matlab), Lane Navigation (C++), Sensor Fusion Kamera+Radar (C++)
+- Ausbildung: Kfz-Mechatroniker (Autohaus Richt OHG Leonberg, 2006–2011), Fachhochschulreife (2011–2012), Bachelor + Master Fahrzeugtechnik (Hochschule Esslingen, 2012–2017)
+- Stärken: Teamarbeit & Teammanagement, Big Picture + langfristige Lösung im Blick, strukturiert & organisiert, kunden-/lösungsorientiert, entscheidungsfreudig, proaktives Stakeholder-Management, internationale Teams über Zeitzonen, ASPICE, AWS, Confluence/Jira
+- Liebt vielseitige Aufgaben, kein reines SW-Development mehr
 
 FINANZEN:
-- Gehalt: ~8.500€ brutto/Monat Base + ESPP + RSUs (15k–30k/Jahr)
-- Keine Schulden, keine Kinder, keine Familienpflichten
-- Gesetzliche + private Altersvorsorge
+- ~8.500€ brutto/Monat Base + ESPP + RSUs (15k–30k/Jahr). Keine Schulden, keine Kinder. Gesetzliche + private Altersvorsorge.
+
+QUALCOMM-FRUST:
+- Seit Übernahme von Arriver wird es schlimmer. Abteilungsleiterin in San Diego hat kaum Management-Skills. Zwei System-Architekten (ebenfalls San Diego) wurden befördert ohne Übersicht oder Koordination — EU-Team wird mikromanaged obwohl es besser performt. Duplicate Work (z.B. Error Triage Agent). Marc denkt aktiv über Kündigung nach. Bleibt wegen direktem Team und eigenem Chef (beide sehr gut, wie Freunde).
+
+JOBSUCHE:
+- Job-Agent mit Claude Code gebaut, erste gute Treffer
+- Interessante Richtungen: Automotive Tooling, ADAS Sicherheit (weniger Verkehrstote), Medizintechnik/Chirurgieroboter/Prothesen (Brainlab München als Top-Kandidat), Motorsport/Spezialfahrzeuge
+- Idealismus ist sein Kernantrieb — muss an das glauben was die Firma/das Produkt tut
+- Prioritätszertifikate: ISO 26262, AWS Solutions Architect Associate
+- Hidden Champions die passen: Elektrobit, TASKING, Brainlab, Rohde & Schwarz
+- Könnte ~1 Jahr ohne Einkommen überbrücken. Hat BMW-Kontakt.
+
+PERSÖNLICHKEIT & WERTE:
+- MBTI: ENFJ-A ("Protagonist")
+- Werte geprägt von Punkrock und Mutter: Solidarität, Gemeinschaft, für andere eintreten, demokratisch wählen
+- Vom Vater: Leidenschaft für Autos + emotionales Temperament (sieht es selbst so)
+- Mutter: soziales Engagement, Idealismus — hat er als Teenager abgelehnt, jetzt voll übernommen
+- Idealismus = sein Kernantrieb: bei Arbeit, in Beziehungen, beim Ehrenamt. Merkt es daran wann er Überstunden macht oder etwas hochpriorisiert.
+- Bevorzugt 1-on-1 Gespräche über große Gruppen. Kocht lieber für andere als für sich.
 
 HOBBYS:
-- Segeln, Outdoor, Laufen, Gym, Holzarbeiten, Autos, Wandern, Motorsport (Nürburgring), Musik (Rock, Punk, Metal)
-- Ehrenamtlich aktiv in einer Hilfsorganisation (Vermittlungsrolle)
+- Autos (BMW 140i 2017), Nürburgring (Trackday letztes Jahr, dieses Jahr wieder mit Freunden), 24h-Rennen Nürburgring seit ~16, Eis-Drifttraining (Gasner 2024)
+- Segeln (SBF Binnen letztes Jahr), Schnitzen/Whittling, Feuermachen (Feuerstahl), Holz machen, Wandern, Laufen, Gym
+- Musik: Punk, Rock, Metal, Heavy Metal — Konzerte, immer Musik hören, einer der 2 wichtigsten Ausgleiche neben Autofahren
+- YouTube: Naturensöhne, Fritz Meineke, Outdoor Boys
+- Zukunfts-Reiseideen: Sächsische Schweiz, Harz
+
+EHRENAMT:
+- SWaF (Start with a Friend) München seit Feb. 2025, Vermittlungsteam — Tandems aus Newcomern und Locals matchen
+
+REISEN 2025:
+- Porto (erledigt), Nürburgring Juli, Spanien Sept. (Anwesen mit ~10 Freunden)
+- Geplant: Solo-Roadtrip Juni (~1 Woche): München→Großglockner→Dolomiten (Drei Zinnen, Stilfserjoch)→Slowenien (Vršič-Pass, Soča-Tal, Bled, Ljubljana)→München
+- Segeln Gardasee (Riva del Garda, Stickl Sportcamp oder Sailing du Lac) als Alternative oder nächstes Jahr
 
 BEZIEHUNGEN:
-- Aktuell single (Trennung ~1 Monat her)
-- Tami (Tamari) aus Georgien, 2019-2024, 5 Jahre. Er hat Schluss gemacht — seine Gefühle reichten nicht für den nächsten Schritt (Heirat, Kinder). Ihre Gefühle waren nie das Problem. Kein Sex (sie orthodox). Marc war im Kopf schon länger fertig, hat sich fast 2 Monate Zeit gelassen um sicher zu sein.
-- Noha aus Marokko, ca. 1 Jahr, 10 Jahre jünger, Fernbeziehung. Kommunikation besser als mit Tami. Eifersuchtsprobleme. Sie hat ohne Erklärung Schluss gemacht — hat Marc sehr getroffen, kein richtiger Abschluss.
-- Nura aus Palästina, ca. 3,5 Monate, vor ca. 1 Monat Schluss. Marc sah sie als nahezu perfekt: Kommunikation, Idealismus, Direktheit, Aussehen. Sie hat erklärt warum. Marc denkt täglich daran.
+- Aktuell single. Sucht Nähe, würde gerne wieder feste Beziehung — will erst an sich arbeiten.
+- Tami (Tamari) aus Georgien, 2019–2024: Er hat Schluss gemacht, Gefühle reichten nicht. Kein Sex (sie orthodox).
+- Noha aus Marokko, ~1 Jahr: Fernbeziehung, sie hat ohne Erklärung Schluss gemacht — hat Marc getroffen.
+- Nura aus Palästina, ~3,5 Monate, vor ~1 Monat Schluss: Erste Freundin mit echtem Idealismus (Aktivismus für Palästina, queer rights). Kommunikation direkt und offen. Marc denkt täglich daran, würde sofort ja sagen wenn sie sich meldet. Was ihn am meisten beeindruckt hat: ihr Idealismus und ihre Durchhaltekraft trotz aussichtsloser Situationen.
+- Problem mit Nura: Marc war sprachlos beim Gaza-Thema (kein persönlicher Bezug), sie las es als Desinteresse. Kommunikationsunterschied: er achtet auf Formulierungen, sie blieb ruhig aber wählte Worte nicht bewusst — zu spät erkannt.
+- Ideale Partnerin: direkte Kommunikation, emotional geerdet aber nicht still, eigene starke Meinung, geteilte Werte, eigenes Leben/Freunde. MBTI-Matches: INFJ (Top), INTJ, ENFP.
 
-PROBLEME MIT NURA:
-- Nura politisch aktiv (Gaza/Palästina). Marc war sprachlos — kein persönlicher Bezug zum Krieg. Sie las es als Desinteresse, was er nicht wollte.
-- Kommunikationsunterschied: Marc achtet sehr auf Formulierungen. Nura blieb ruhig wenn aufgebracht, wählte Worte aber nicht bewusst. Diesen Unterschied haben sie zu spät erkannt.
-- Nura hat ihm gespiegelt, dass er Frauen anstarrt. Marc hat es zuerst abgestritten, akzeptiert es jetzt.
+SELBSTREFLEXION & THERAPIEZIELE:
+- Teufeladvokat-Modus: nimmt automatisch Gegenseite ein, auch ohne es zu meinen. Wirkt extrem.
+- Emotional eskaliert in Diskussionen (laut, impulsiv) — sieht es selbst als normal (wie Campino), aber andere nicht. Nur bei Nahestehenden, bei Arbeit kontrollierbar.
+- Geduld als Trigger: wenn Geduld weg ist oder er sich nicht verstanden fühlt, reagiert er falsch.
+- Frauen nachschauen: bewusst, will es ändern. Hat es Noha und Nura Eifersucht gegeben.
+- "Bilanzieren": macht viel für Partnerin, sagt es aber nicht, baut still Erwartungshaltung auf. Lösung: offen ansprechen was er tut und was er sich wünscht.
+- Reguliert vieles bewusst (Emotionen, Bewegung) — hat Gefühl natürliches Ich trifft schlechte Entscheidungen.
+- Vater: Kfz-Mechaniker, Lkw-Fahrer, kennt kaum andere Emotion als Wut/Aggression.
 
-SELBSTREFLEXION & PERSÖNLICHKEIT:
-- Spielt oft Teufeladvokat — nimmt bei starken Meinungen automatisch die Gegenseite ein, auch wenn er sie nicht wirklich vertritt. Wirkt dadurch extrem.
-- Wird in Diskussionen emotional, lauter, gereizt — ohne es selbst so wahrzunehmen. Mehrere Personen unabhaengig gespiegelt. Bei der Arbeit kontrollierbar, bei Nahestehenden nicht.
-- Glaubt es vom Vater geerbt zu haben — Vater hat Aggressions-/Wutproblem, kennt kaum andere Emotionen.
-- Hat das Gefuehl sein natuerliches Ich trifft schlechte Entscheidungen — reguliert vieles bewusst ueberm Kopf: Emotionen, sogar Bewegungskoordination. Denkt viel mehr ueber Aktionen nach als andere.
-- Ca. 8 Therapiepraxen angeschrieben, bisher nur Absagen oder lange Wartezeiten.
+THERAPIESUCHE:
+- IFT → anrufen. Weigel → Antwort ausstehend. Mielke → keine Plätze. Psychologie München → Ende Juli nochmal. Dr. Wolf → im Urlaub, wartet auf Antwort. Kein Selbstzahler (Kontinuität wichtig).
 
 UMGANG MIT MARC:
-- Direkt und ehrlich, kein Schoenreden
-- Echter Dialog, nicht nur Bestaetigung
-- Beim Anstarren und Diskussionsverhalten: er hat es akzeptiert, nicht nochmal in Frage stellen
-- Beim Thema Therapie/Selbstreflexion: zuhoeren, spiegeln, nicht draengeln`
+- Direkt, kein Schönreden. Echter Dialog, widersprechen wenn nötig. Eine Frage, nicht mehrere.
+- Anstarren/Diskussionsverhalten: er hat es akzeptiert, nicht nochmal in Frage stellen.
+- Therapiethemen: zuhören, spiegeln, nicht drängeln.
+- Er will keinen Therapeuten-Ton, sondern einen ehrlichen Freund.`
 };
 
 async function loginProfile(name) {
@@ -1089,6 +1121,17 @@ function switchProfile() {
   currentProfile = null;
   document.getElementById('profileScreen').classList.remove('hidden');
   initProfileScreen();
+}
+
+async function resetMemory() {
+  if (!currentProfile) return;
+  if (!confirm('Gedächtnis mit dem aktuellen Profil-Stand überschreiben? Gesprächsverlauf bleibt erhalten.')) return;
+  const seed = SEED_MEMORIES[currentProfile.toLowerCase()];
+  if (!seed) { alert('Kein Seed-Profil für diesen Nutzer vorhanden.'); return; }
+  memoryNote = seed;
+  await saveToStorage();
+  showMemoryBadge(true);
+  alert('✓ Gedächtnis aktualisiert.');
 }
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
