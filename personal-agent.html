@@ -1216,11 +1216,11 @@ async function updateMemory() {
       headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {}) },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 600,
+        max_tokens: 1500,
         system: `Du bist ein kompakter Gedächtnis-Assistent. 
-Fasse das Gespräch in maximal 200 Wörtern zusammen: Was hat Marc erzählt? Welche Themen, Entscheidungen, Gefühle, offene Punkte? 
+Fasse das Gespräch in maximal 500 Wörtern zusammen: Was hat Marc erzählt? Welche Themen, Entscheidungen, Gefühle, offene Punkte, konkrete Details (Namen, Orte, Ereignisse)? 
 Schreib sachlich, stichpunktartig, auf Deutsch. Kein Blabla. 
-Bestehende Erinnerungen ergänzen, nicht ersetzen — fasse beides zusammen wenn vorhanden.`,
+Bestehende Erinnerungen ergänzen, nicht ersetzen — fasse beides zusammen wenn vorhanden. Wichtige Details (z.B. Verhaltensmuster, Beziehungsthemen, Therapieziele) unbedingt beibehalten.`,
         messages: [
           {
             role: 'user',
